@@ -1,0 +1,16 @@
+{
+  "name": "school",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev -w api",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w api && npm run build -w web",
+    "db:up": "docker compose up -d",
+    "db:setup": "npm run db:setup -w api",
+    "seed": "npm run prisma:seed -w api"
+  }
+}

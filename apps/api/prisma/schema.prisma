@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model User {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(EDITOR)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  posts        Post[]
+}
+
+model Category {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        Json
+  slug        String   @unique
+  description Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  posts       Post[]
+}
+
+model Post {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  title       Json
+  slug        String     @unique
+  excerpt     Json?
+  content     Json
+  coverImage  String?
+  images      String[]
+  status      PostStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  authorId    String     @db.ObjectId
+  author      User       @relation(fields: [authorId], references: [id])
+  categoryId  String?    @db.ObjectId
+  category    Category?  @relation(fields: [categoryId], references: [id])
+}
+
+/// CMS section pages (About, Documents, Clubs, etc.) — all editable in admin
+model Page {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  title       Json
+  slug        String     @unique
+  excerpt     Json?
+  content     Json
+  coverImage  String?
+  status      PostStatus @default(DRAFT)
+  publishedAt DateTime?
+  /// When set, this page is a year under another section (e.g. assessment)
+  parentSlug  String?
+  /// Display label for academic year, e.g. "2024-2025"
+  yearLabel   String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([parentSlug])
+}
+
+/// Nested site navigation — fully editable in admin
+model MenuItem {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  label        Json
+  href         String     @default("#")
+  order        Int        @default(0)
+  visible      Boolean    @default(true)
+  openInNewTab Boolean    @default(false)
+  parentId     String?    @db.ObjectId
+  parent       MenuItem?  @relation("MenuTree", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children     MenuItem[] @relation("MenuTree")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
