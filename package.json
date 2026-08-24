@@ -10,6 +10,7 @@
     "dev:web": "npm run dev -w web",
     "build": "npm run prisma:generate -w api && npm run build -w api",
     "build:all": "npm run build -w api && npm run build -w web",
+    "start": "npm run start:prod -w api",
     "db:up": "docker compose up -d",
     "db:setup": "npm run db:setup -w api",
     "seed": "npm run prisma:seed -w api"

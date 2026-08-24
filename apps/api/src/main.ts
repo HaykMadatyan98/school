@@ -61,9 +61,9 @@ async function bootstrap() {
     },
   });
 
-  const port = config.get<number>('PORT', 3001);
-  await app.listen(port);
-  console.log(`API running on http://localhost:${port}/api`);
-  console.log(`Swagger UI: http://localhost:${port}/api/docs`);
+  const port = Number(config.get('PORT') ?? 3001);
+  await app.listen(port, '0.0.0.0');
+  console.log(`API running on http://0.0.0.0:${port}/api`);
+  console.log(`Swagger UI: http://0.0.0.0:${port}/api/docs`);
 }
 bootstrap();
