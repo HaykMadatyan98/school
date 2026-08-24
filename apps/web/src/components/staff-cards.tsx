@@ -80,7 +80,7 @@ export function formatStaffBio(raw: string): BioBlock[] {
       chunk.toLowerCase().startsWith(h.toLowerCase()),
     );
     if (header) {
-      let rest = chunk.slice(header.length).replace(/^[\s:՝`]+/, "").trim();
+      const rest = chunk.slice(header.length).replace(/^[\s:՝`]+/, "").trim();
       // Further split long work history by years already broken
       const lines = rest
         ? rest.split(/\n+/).map((l) => l.trim()).filter(Boolean)
