@@ -3,9 +3,15 @@
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { GallerySlider } from "@/components/gallery-slider";
+import { PeopleList } from "@/components/people-list";
 import { StaffCards, type StaffPerson } from "@/components/staff-cards";
 import { mediaDownloadUrl } from "@/lib/api";
-import { isPdfHref } from "@/lib/content-media";
+import { docBadgeLabel, isPdfHref } from "@/lib/content-media";
+
+export type RenderContentOptions = {
+  /** parent-council etc. — table list instead of photo cards */
+  peopleLayout?: "cards" | "list";
+};
 
 const IMAGE_MD = /!\[([^\]]*)\]\(([^)]+)\)/g;
 const LINK_OR_IMAGE =
@@ -111,9 +117,9 @@ function inlineFormat(
             rel={isExternal && !isMock ? "noreferrer" : undefined}
           >
             <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-accent-deep">
-              PDF
+              {docBadgeLabel(href, label)}
             </span>
-            <span>{label.replace(/\.pdf$/i, "")}</span>
+            <span>{label.replace(/\.(pdf|docx?|xlsx?|pptx?)$/i, "")}</span>
             {isMock ? (
               <span className="text-[0.7rem] text-ink-soft">(մոկ)</span>
             ) : null}
@@ -145,11 +151,12 @@ function inlineFormat(
 function takeImages(line: string) {
   const images: { alt: string; src: string }[] = [];
   let rest = line.trim();
-  const one = /^!\[([^\]]*)\]\(([^)]+)\)\s*/;
+  // Allow empty () — used for name-only person cards without a photo
+  const one = /^!\[([^\]]*)\]\(([^)]*)\)\s*/;
   while (rest) {
     const m = rest.match(one);
     if (!m) break;
-    if (m[2].trim()) images.push({ alt: m[1], src: m[2].trim() });
+    images.push({ alt: m[1], src: (m[2] || "").trim() });
     rest = rest.slice(m[0].length).trimStart();
   }
   return { images, rest: rest.trim() };
@@ -202,11 +209,83 @@ function parsePersonBlock(
   };
 }
 
+function isVideoHref(href: string) {
+  return (
+    /\.(mp4|webm|mov|m4v)(\?|$)/i.test(href) ||
+    /youtube\.com|youtu\.be|vimeo\.com/i.test(href)
+  );
+}
+
+function parseVideoLine(line: string): { src: string; alt: string } | null {
+  const next = line.trim();
+  if (!next) return null;
+  const md = next.match(/^\[([^\]]*)\]\((https?:[^)]+)\)\s*$/i);
+  const bare = next.match(/^(https?:\/\/\S+)\s*$/i);
+  const href = (md?.[2] || bare?.[1] || "").trim();
+  if (!href || !isVideoHref(href)) return null;
+  return { src: href, alt: md?.[1] || "" };
+}
+
+/** Drop leading H2 that duplicates the page hero title. */
+export function stripDuplicateTitle(content: string, title: string) {
+  if (!content || !title) return content;
+  const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return content
+    .replace(new RegExp(`^##\\s+${escaped}\\s*\\n+`, "i"), "")
+    .replace(new RegExp(`^#\\s+${escaped}\\s*\\n+`, "i"), "")
+    .trimStart();
+}
+
+/**
+ * Drop in-body year link lists when YearPicker already shows the same years
+ * (e.g. "### Ըստ ուսումնական տարվա" + bullet links to /p/*-20xx).
+ */
+export function stripRedundantYearNav(content: string) {
+  const lines = content.split("\n");
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const heading = line.trim().match(
+      /^###?\s+(Ըստ ուսումնական տարվա|By academic year|По учебным годам|Տարիներ|Years)$/i,
+    );
+    if (heading) {
+      let j = i + 1;
+      while (j < lines.length && !lines[j].trim()) j++;
+      let yearBullets = 0;
+      let k = j;
+      while (k < lines.length) {
+        const t = lines[k].trim();
+        if (!t) {
+          k++;
+          continue;
+        }
+        if (/^#{1,3}\s/.test(t) || t.startsWith(":::")) break;
+        if (/^-?\s*\[[^\]]+\]\(\/p\/[^)]*20\d{2}[^)]*\)\s*$/i.test(t)) {
+          yearBullets++;
+          k++;
+          continue;
+        }
+        break;
+      }
+      if (yearBullets >= 2) {
+        i = k;
+        continue;
+      }
+    }
+    out.push(line);
+    i++;
+  }
+  return out.join("\n");
+}
+
 /** Markdown-ish renderer with gallery sliders and staff person cards */
 export function renderContent(
   content: string,
   resolveUrl: (u: string) => string,
+  options: RenderContentOptions = {},
 ) {
+  const peopleLayout = options.peopleLayout || "cards";
   // TipTap often emits images glued on one line — split for cleaner parsing
   const normalized = content.replace(/\)\s*!\[/g, ")\n![");
   const lines = normalized.split("\n");
@@ -215,6 +294,34 @@ export function renderContent(
 
   while (i < lines.length) {
     const line = lines[i];
+
+    // Consecutive video links → gallery slider (lazy thumbs)
+    const firstVid = parseVideoLine(line);
+    if (firstVid) {
+      const gallery: { src: string; alt: string; kind: "video" }[] = [];
+      while (i < lines.length) {
+        const v = parseVideoLine(lines[i]);
+        if (!v) {
+          if (!lines[i].trim()) {
+            i++;
+            continue;
+          }
+          break;
+        }
+        gallery.push({
+          src: resolveUrl(v.src) || v.src,
+          alt: v.alt,
+          kind: "video",
+        });
+        i++;
+      }
+      if (gallery.length) {
+        nodes.push(
+          <GallerySlider key={`vid-${i}-${gallery[0].src}`} images={gallery} />,
+        );
+      }
+      continue;
+    }
 
     if (line.trim() === ":::person") {
       const people: StaffPerson[] = [];
@@ -231,9 +338,19 @@ export function renderContent(
         while (i < lines.length && !lines[i].trim()) i++;
       }
       if (people.length) {
-        nodes.push(
-          <StaffCards key={`staff-${people[0].photo}`} people={people} />,
-        );
+        if (peopleLayout === "list") {
+          nodes.push(
+            <PeopleList
+              key={`plist-${people[0].name}`}
+              people={people}
+              unitLabel="անդամ"
+            />,
+          );
+        } else {
+          nodes.push(
+            <StaffCards key={`staff-${people[0].photo || people[0].name}`} people={people} />,
+          );
+        }
       }
       continue;
     }
@@ -241,9 +358,16 @@ export function renderContent(
     const { images: leadingImages, rest } = takeImages(line);
 
     if (leadingImages.length && !rest) {
-      const gallery: { src: string; alt: string }[] = leadingImages
-        .map((img) => ({ src: resolveUrl(img.src), alt: img.alt }))
-        .filter((img) => Boolean(img.src));
+      const gallery: { src: string; alt: string; kind?: "image" | "video" }[] =
+        leadingImages
+          .map((img) => ({
+            src: resolveUrl(img.src),
+            alt: img.alt,
+            kind: /\.(mp4|webm|mov|m4v)(\?|$)/i.test(img.src)
+              ? ("video" as const)
+              : ("image" as const),
+          }))
+          .filter((img) => Boolean(img.src));
       i++;
       while (i < lines.length) {
         const next = lines[i];
@@ -251,24 +375,50 @@ export function renderContent(
           i++;
           continue;
         }
+        if (
+          /^###\s+(Լուսանկարներ|Photos|Галерея|Gallery|Տեսանյութեր|Videos)/i.test(
+            next.trim(),
+          )
+        ) {
+          i++;
+          continue;
+        }
         const more = takeImages(next);
         if (!more.images.length || more.rest) break;
         for (const img of more.images) {
           const src = resolveUrl(img.src);
-          if (src) gallery.push({ src, alt: img.alt });
+          if (src) {
+            gallery.push({
+              src,
+              alt: img.alt,
+              kind: /\.(mp4|webm|mov|m4v)(\?|$)/i.test(img.src)
+                ? "video"
+                : "image",
+            });
+          }
         }
         i++;
       }
-      if (gallery.length === 1) {
-        nodes.push(
-          <ContentImage
-            key={`img-${i}-${gallery[0].src}`}
-            src={gallery[0].src}
-            alt={gallery[0].alt}
-            resolveUrl={(u) => u}
-          />,
-        );
-      } else if (gallery.length > 1) {
+      while (i < lines.length) {
+        const next = lines[i].trim();
+        if (!next) {
+          i++;
+          continue;
+        }
+        const md = next.match(/^\[([^\]]*)\]\((https?:[^)]+)\)\s*$/i);
+        const bare = next.match(/^(https?:\/\/\S+)\s*$/i);
+        const href = (md?.[2] || bare?.[1] || "").trim();
+        const label = md?.[1] || "";
+        if (!href) break;
+        if (!isVideoHref(href)) break;
+        gallery.push({
+          src: resolveUrl(href) || href,
+          alt: label,
+          kind: "video",
+        });
+        i++;
+      }
+      if (gallery.length) {
         nodes.push(
           <GallerySlider key={`gal-${i}-${gallery[0]?.src}`} images={gallery} />,
         );
@@ -277,15 +427,11 @@ export function renderContent(
     }
 
     if (leadingImages.length && rest) {
-      for (const [idx, img] of leadingImages.entries()) {
-        nodes.push(
-          <ContentImage
-            key={`img-mix-${i}-${idx}`}
-            src={img.src}
-            alt={img.alt}
-            resolveUrl={resolveUrl}
-          />,
-        );
+      const gallery = leadingImages
+        .map((img) => ({ src: resolveUrl(img.src), alt: img.alt }))
+        .filter((img) => Boolean(img.src));
+      if (gallery.length) {
+        nodes.push(<GallerySlider key={`gal-mix-${i}`} images={gallery} />);
       }
       nodes.push(
         <p key={`p-mix-${i}`}>{inlineFormat(rest, `p-${i}`, resolveUrl)}</p>,
@@ -303,7 +449,7 @@ export function renderContent(
     }
     if (line.startsWith("### ")) {
       const title = line.slice(4).trim();
-      if (/^(Լուսանկարներ|Photos|Галерея|Gallery)$/i.test(title)) {
+      if (/^(Լուսանկարներ|Photos|Галерея|Gallery|Տեսանյութեր|Videos)$/i.test(title)) {
         i++;
         continue;
       }
@@ -385,14 +531,37 @@ export function renderContent(
       i++;
       continue;
     }
-    // Paragraph that may still contain inline images
+    // Paragraph that may still contain inline images → pull them into a slider
     if (IMAGE_MD.test(line)) {
       IMAGE_MD.lastIndex = 0;
-      nodes.push(
-        <div key={`block-${i}`} className="space-y-2">
-          {inlineFormat(line, `p-${i}`, resolveUrl)}
-        </div>,
-      );
+      const src = line.trim();
+      const midImgs: { alt: string; src: string }[] = [];
+      const chunks: string[] = [];
+      let last = 0;
+      const re = /!\[([^\]]*)\]\(([^)]+)\)/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(src))) {
+        chunks.push(src.slice(last, m.index));
+        if (m[2].trim()) midImgs.push({ alt: m[1], src: m[2].trim() });
+        last = m.index + m[0].length;
+      }
+      chunks.push(src.slice(last));
+      const textRest = chunks.join(" ").replace(/\s+/g, " ").trim();
+      const gallery = midImgs
+        .map((img) => ({ src: resolveUrl(img.src), alt: img.alt }))
+        .filter((img) => Boolean(img.src));
+      if (gallery.length) {
+        nodes.push(
+          <GallerySlider key={`gal-inline-${i}`} images={gallery} />,
+        );
+      }
+      if (textRest) {
+        nodes.push(
+          <p key={`p-inline-${i}`}>
+            {inlineFormat(textRest, `p-${i}`, resolveUrl)}
+          </p>,
+        );
+      }
     } else {
       nodes.push(
         <p key={i}>{inlineFormat(line, `p-${i}`, resolveUrl)}</p>,

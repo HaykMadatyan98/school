@@ -570,6 +570,7 @@ async function main() {
       children: [
         { label: L('Ներքին գնահատում', 'Internal', 'Внутренняя'), href: '/p/assessment' },
         { label: L('Կամավոր ատեստավորում', 'Attestation', 'Аттестация'), href: '/p/voluntary-attestation' },
+        { label: L('Տարակարգ', 'Qualification rank', 'Квалификационный разряд'), href: '/p/tarakarg' },
       ],
     },
     {

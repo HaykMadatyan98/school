@@ -18,8 +18,13 @@ async function bootstrap() {
 
   app.useStaticAssets(uploadDir, { prefix: '/uploads/' });
   app.setGlobalPrefix('api');
+  // Browser Origin never has a trailing slash; strip so env typos don't break CORS.
+  const corsOrigin = (
+    config.get<string>('CORS_ORIGIN', 'http://localhost:3000') ??
+    'http://localhost:3000'
+  ).replace(/\/+$/, '');
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN', 'http://localhost:3000'),
+    origin: corsOrigin,
     credentials: true,
   });
   app.useGlobalPipes(

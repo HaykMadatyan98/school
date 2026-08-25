@@ -25,10 +25,15 @@
     "migrate:old-site": "tsx scripts/migrate-old-site.ts",
     "migrate:cloud-media": "tsx scripts/migrate-cloud-media.ts",
     "migrate:full": "tsx scripts/migrate-full-site.ts",
+    "verify:migration": "tsx scripts/verify-migration.ts",
     "migrate:pages": "tsx scripts/migrate-pages-to-drive.ts",
     "fix:content-am": "tsx scripts/fix-content-am.ts",
+    "clean:weebly-junk": "tsx scripts/clean-weebly-junk.ts",
+    "fix:page-chrome": "tsx scripts/fix-page-chrome.ts",
+    "migrate:media-drive": "tsx scripts/migrate-all-media-to-drive.ts",
     "sync:staff": "tsx scripts/sync-staff-cards.ts",
     "normalize:staff-bios": "tsx scripts/normalize-staff-bios.ts",
+    "add:director": "tsx scripts/add-director.ts",
     "seed:mock": "tsx scripts/seed-mock.ts"
   },
   "prisma": {

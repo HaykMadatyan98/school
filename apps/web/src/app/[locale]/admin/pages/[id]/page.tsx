@@ -16,6 +16,7 @@ import {
   type PagePdf,
 } from "@/lib/content-media";
 import {
+  isPeopleListPage,
   isStaffPageContent,
   parseStaffContent,
   serializeStaffContent,
@@ -47,6 +48,7 @@ type FormState = {
   staffPeople: StaffCard[];
   parentSlug: string;
   yearLabel: string;
+  listMode: boolean;
 };
 
 type TabId = "text" | "media";
@@ -65,6 +67,7 @@ const empty: FormState = {
   staffPeople: [],
   parentSlug: "",
   yearLabel: "",
+  listMode: false,
 };
 
 const fieldClass =
@@ -152,6 +155,7 @@ export default function AdminPageEditor() {
         const content = asLocalized(page.content);
         const split = splitContentAndMedia(content.am || "");
         const staffMode = isStaffPageContent(split.text, page.slug);
+        const listMode = isPeopleListPage(page.slug);
         const staff = staffMode
           ? parseStaffContent(split.text)
           : { intro: "", people: [] as StaffCard[] };
@@ -160,7 +164,7 @@ export default function AdminPageEditor() {
           slug: page.slug,
           excerpt: asLocalized(page.excerpt),
           text: staffMode ? "" : split.text,
-          images: split.images,
+          images: listMode ? [] : split.images,
           pdfs: split.pdfs,
           coverImage: page.coverImage || "",
           status: page.status,
@@ -169,6 +173,7 @@ export default function AdminPageEditor() {
           staffPeople: staff.people,
           parentSlug: page.parentSlug || "",
           yearLabel: page.yearLabel || "",
+          listMode,
         });
         setSlugTouched(true);
       })
@@ -181,7 +186,11 @@ export default function AdminPageEditor() {
     const bodyText = form.staffMode
       ? serializeStaffContent(form.title.am, form.staffIntro, form.staffPeople)
       : form.text;
-    const contentAm = mergeContentAndMedia(bodyText, form.images, form.pdfs);
+    const contentAm = mergeContentAndMedia(
+      bodyText,
+      form.listMode ? [] : form.images,
+      form.pdfs,
+    );
     if (!form.title.am.trim() || !contentAm.trim()) {
       setError(t("requiredAllLangs"));
       return;
@@ -263,7 +272,11 @@ export default function AdminPageEditor() {
   const tabs: { id: TabId; label: string }[] = [
     {
       id: "text",
-      label: form.staffMode ? t("sectionStaff") : t("sectionText"),
+      label: form.staffMode
+        ? form.listMode
+          ? t("sectionMembers")
+          : t("sectionStaff")
+        : t("sectionText"),
     },
     { id: "media", label: t("sectionMedia") },
   ];
@@ -378,6 +391,7 @@ export default function AdminPageEditor() {
                   intro={form.staffIntro}
                   people={form.staffPeople}
                   token={token}
+                  listMode={form.listMode}
                   onIntroChange={(staffIntro) =>
                     setForm((f) => ({ ...f, staffIntro }))
                   }

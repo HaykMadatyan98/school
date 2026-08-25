@@ -32,7 +32,7 @@ const SECTION_SOURCES: { slug: string; title: L; paths: string[]; yearOf?: strin
   { slug: 'school-life', title: L('Դպրոցական կյանք', 'School life', 'Школьная жизнь'), paths: ['/1329139714091381138814001410138513971400141013981398138114082.html'] },
   { slug: 'visits', title: L('Այցելություններ', 'Visits', 'Посещения'), paths: ['/1329139714091381138814001410138513971400141013981398138114082.html', '/132913971409138113881400141013851397140014101398139813811408.html'] },
   { slug: 'visits-2025-2026', title: L('Այցելություններ 2025-2026', 'Visits 2025-2026', 'Посещения 2025-2026'), paths: ['/1329139714091381138814001410138513971400141013981398138114082025-2026.html'], yearOf: 'visits' },
-  { slug: 'visits-2024-2025', title: L('Այցելություններ 2024-2025', 'Visits 2024-2025', 'Посещения 2024-2025'), paths: ['/132913971409138113881400141013851397140014101398139813811408-2024-25.html', '/2024-25-137713971409138113881400141013851397140014101398139813811408.html'], yearOf: 'visits' },
+  { slug: 'visits-2024-2025', title: L('Այցելություններ 2024-2025', 'Visits 2024-2025', 'Посещения 2024-2025'), paths: ['/2024-25-137713971409138113881400141013851397140014101398139813811408.html', '/132913971409138113881400141013851397140014101398139813811408-2024-25.html'], yearOf: 'visits' },
   { slug: 'meetings', title: L('Հանդիպումներ', 'Meetings', 'Встречи'), paths: ['/134413771398138013871402140014101396139813811408.html', '/134413291350133213391354135213621348135013331360.html'] },
   { slug: 'meetings-2024-2025', title: L('Հանդիպումներ 2024-2025', 'Meetings 2024-2025', 'Встречи 2024-2025'), paths: ['/2024-2025-139213771398138013871402140014101396139813811408.html'], yearOf: 'meetings' },
   { slug: 'exemplary-lessons', title: L('Օրինակելի դասեր', 'Exemplary lessons', 'Образцовые уроки'), paths: ['/136514081387139813771391138113881387-13801377140513811408.html'] },
@@ -54,8 +54,15 @@ const SECTION_SOURCES: { slug: string; title: L; paths: string[]; yearOf?: strin
   { slug: 'assessment-2019-2020', title: L('Ներքին գնահատում 2019-2020', 'Assessment 2019-2020', 'Оценка 2019-2020'), paths: ['/135013331360136413391350-1331135013291344132913591352136213482019-2020.html'], yearOf: 'assessment' },
   { slug: 'assessment-2018-2019', title: L('Ներքին գնահատում 2018-2019', 'Assessment 2018-2019', 'Оценка 2018-2019'), paths: ['/135013331360136413391350-133113501329134413291359135213621348-2018-2019.html'], yearOf: 'assessment' },
   { slug: 'assessment-2017-2018', title: L('Ներքին գնահատում 2017-2018', 'Assessment 2017-2018', 'Оценка 2017-2018'), paths: ['/135013811408141213871398-137913981377139213771407140014101396-2017-2018.html'], yearOf: 'assessment' },
+  { slug: 'assessment-2016-2017', title: L('Ներքին գնահատում 2016-2017', 'Assessment 2016-2017', 'Оценка 2016-2017'), paths: ['/13501381141213871398-1379139813771392137714071400141013962016-2017.html'], yearOf: 'assessment' },
   { slug: 'assessment-2015-2016', title: L('Ներքին գնահատում 2015-2016', 'Assessment 2015-2016', 'Оценка 2015-2016'), paths: ['/13501381141213871398-1379139813771392137714071400141013962015-2016.html'], yearOf: 'assessment' },
   { slug: 'voluntary-attestation', title: L('Կամավոր ատեստավորում', 'Voluntary attestation', 'Добровольная аттестация'), paths: ['/1343132913481329135813521360-132913591333135713591329135813521360135214101348.html'] },
+  // New section (not on old site as a standalone page)
+  {
+    slug: 'tarakarg',
+    title: L('Տարակարգ', 'Qualification rank', 'Квалификационный разряд'),
+    paths: [],
+  },
 
   // Documents
   { slug: 'documents', title: L('Փաստաթղթեր', 'Documents', 'Документы'), paths: ['/1363137714051407137713851394138513811408.html'] },
@@ -157,15 +164,17 @@ function collectImages(html: string) {
   return [...set];
 }
 
-function collectPdfs(html: string) {
+function collectFiles(html: string) {
   const out: { name: string; url: string }[] = [];
   const seen = new Set<string>();
-  for (const m of html.matchAll(/\/uploads\/[^"'\\\s<>]+\.pdf/gi)) {
+  for (const m of html.matchAll(
+    /\/uploads\/[^"'\\\s<>]+\.(?:pdf|docx?|xlsx?|pptx?)/gi,
+  )) {
     const url = absUrl(decodeURIComponent(m[0].split('?')[0]));
     if (seen.has(url)) continue;
     seen.add(url);
     out.push({
-      name: decodeURIComponent(url.split('/').pop() || 'file.pdf'),
+      name: decodeURIComponent(url.split('/').pop() || 'file'),
       url,
     });
   }
@@ -176,7 +185,9 @@ function extractParagraphs(html: string): string[] {
   const cleaned = html
     .replace(/<script[\s\S]*?<\/script>/gi, ' ')
     .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<!--[\s\S]*?-->/g, ' ');
+    .replace(/<!--[\s\S]*?-->/g, ' ')
+    // Drop Weebly nav/hamburger blocks before reading paragraphs
+    .replace(/<div[^>]*(?:wsite-menu|wsite-nav|nav-wrap|mobile-nav)[^>]*>[\s\S]*?<\/div>/gi, ' ');
   const chunks: string[] = [];
   const seen = new Set<string>();
   for (const m of cleaned.matchAll(
@@ -186,7 +197,8 @@ function extractParagraphs(html: string): string[] {
     text = text.replace(/\s+/g, ' ').trim();
     if (text.length < 45) continue;
     if (
-      /ՆՈՐՈւԹՅՈւՆՆԵՐ|Ներքին գնահատում\s*20|Powered by|Create your own|Weebly|Այցելություններ20|օրինակելի դասեր\s*20|Featured Products|My Site/i.test(
+      /^Menu\s+20\d{2}/i.test(text) ||
+      /ՆՈՐՈւԹՅՈւՆՆԵՐ.*Այցելություններ|Ներքին գնահատում\s*20|Powered by|Create your own|Weebly|Այցելություններ20|օրինակելի դասեր\s*20|Նախագծային ուսուցում20|Featured Products|My Site|File Size:|Download File/i.test(
         text,
       )
     ) {
@@ -194,6 +206,14 @@ function extractParagraphs(html: string): string[] {
     }
     // Skip pure nav crumb trails
     if ((text.match(/>/g) || []).length >= 2 && text.length < 120) continue;
+    // Skip long glued nav dumps
+    if (
+      text.length > 120 &&
+      /ՆՈՐՈւԹՅՈւՆՆԵՐ/i.test(text) &&
+      /Այցելություններ|ԳՆԱՀԱՏՈՒՄ|օրինակելի/i.test(text)
+    ) {
+      continue;
+    }
     const key = text.slice(0, 70);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -310,6 +330,10 @@ async function rebuildMenu() {
           label: L('Կամավոր ատեստավորում', 'Voluntary attestation', 'Аттестация'),
           href: '/p/voluntary-attestation',
         },
+        {
+          label: L('Տարակարգ', 'Qualification rank', 'Квалификационный разряд'),
+          href: '/p/tarakarg',
+        },
       ],
     },
     {
@@ -408,8 +432,9 @@ async function upsertPage(
   contentAm: string,
   excerptAm: string,
   cover?: string,
+  yearMeta?: { parentSlug: string; yearLabel: string },
 ) {
-  const data = {
+  const data: Record<string, unknown> = {
     title,
     excerpt: L(excerptAm),
     content: L(contentAm),
@@ -417,6 +442,10 @@ async function upsertPage(
     status: PostStatus.PUBLISHED,
     publishedAt: new Date(),
   };
+  if (yearMeta) {
+    data.parentSlug = yearMeta.parentSlug;
+    data.yearLabel = yearMeta.yearLabel;
+  }
   const existing = await prisma.page.findUnique({ where: { slug } });
   if (existing) {
     await prisma.page.update({ where: { slug }, data });
@@ -424,6 +453,19 @@ async function upsertPage(
     await prisma.page.create({ data: { slug, ...data } });
   }
 }
+
+/** Curated pages with no old-site URL (or weak scrape). */
+const CURATED: Record<string, { paragraphs: string[]; excerpt: string }> = {
+  tarakarg: {
+    excerpt:
+      'Ուսուցչի մասնագիտական որակավորման տարակարգ՝ դպրոցի մանկավարժների որակավորման աստիճանները։',
+    paragraphs: [
+      'Տարակարգը ուսուցչի մասնագիտական որակավորման աստիճանն է, որը շնորհվում է կամավոր ատեստավորման արդյունքներով և արձանագրվում է ուսուցչի անձնական գործում։',
+      'Հ. 78 հիմնական դպրոցում տարակարգերի վերաբերյալ տեղեկատվությունը կապված է կամավոր ատեստավորման գործընթացի հետ։ Մանրամասների համար տե՛ս նաև «Կամավոր ատեստավորում» բաժինը։',
+      'Այս էջում կհրապարակվեն դպրոցի մանկավարժների տարակարգերի ցանկը և թարմացումները՝ ըստ ուսումնական տարվա։',
+    ],
+  },
+};
 
 async function main() {
   const hero = `${BASE}/uploads/7/0/5/5/7055022/published/78-1.jpg`;
@@ -437,8 +479,55 @@ async function main() {
 
   let ok = 0;
   let fail = 0;
+  let skipped = 0;
 
   for (const section of SECTION_SOURCES) {
+    // Preserve rich staff cards already curated in DB
+    if (section.slug === 'staff' || section.slug === 'teachers') {
+      const existing = await prisma.page.findUnique({ where: { slug: section.slug } });
+      const am = ((existing?.content as { am?: string } | null)?.am || '') as string;
+      if (am.includes(':::person') && /Տնօրեն|Համբարձումյան/.test(am)) {
+        console.log(`SKIP ${section.slug} (keeping curated staff cards)`);
+        skipped++;
+        continue;
+      }
+    }
+
+    const curated = CURATED[section.slug];
+    if (curated || section.paths.length === 0) {
+      const paras = curated?.paragraphs || [
+        `## ${section.title.am}`,
+        'Բովանդակությունը շուտով կլրացվի։',
+      ];
+      const yearLinks =
+        (byYearOf.get(section.slug) || []).length && !section.yearOf
+          ? yearIndexLinks(section.slug, byYearOf.get(section.slug)!)
+          : '';
+      const am = pageMarkdown({
+        title: section.title.am,
+        paragraphs: curated?.paragraphs || paras,
+        images: [],
+        pdfs: [],
+        yearLinks,
+      });
+      await upsertPage(
+        section.slug,
+        section.title,
+        am,
+        (curated?.excerpt || section.title.am).slice(0, 180),
+        hero,
+        section.yearOf
+          ? {
+              parentSlug: section.yearOf,
+              yearLabel: section.slug.replace(`${section.yearOf}-`, ''),
+            }
+          : undefined,
+      );
+      ok++;
+      console.log(`OK ${section.slug} ← curated`);
+      continue;
+    }
+
     let html = '';
     let usedPath = '';
     for (const path of section.paths) {
@@ -460,13 +549,19 @@ async function main() {
         `## ${section.title.am}\n\nԲովանդակությունը շուտով կլրացվի։`,
         section.title.am,
         hero,
+        section.yearOf
+          ? {
+              parentSlug: section.yearOf,
+              yearLabel: section.slug.replace(`${section.yearOf}-`, ''),
+            }
+          : undefined,
       );
       continue;
     }
 
     const paragraphs = extractParagraphs(html);
     const images = collectImages(html);
-    const pdfs = collectPdfs(html);
+    const pdfs = collectFiles(html);
     const years = byYearOf.get(section.slug) || [];
     const yearLinks =
       years.length && !section.yearOf
@@ -491,12 +586,21 @@ async function main() {
       yearLinks,
     });
 
+    const yearLabel = section.yearOf
+      ? section.slug.startsWith(`${section.yearOf}-`)
+        ? section.slug.slice(section.yearOf.length + 1)
+        : section.title.am.match(/(\d{4}-\d{4})/)?.[1] || ''
+      : '';
+
     await upsertPage(
       section.slug,
       section.title,
       am,
       (paras[0] || section.title.am).slice(0, 180),
       images[0] || hero,
+      section.yearOf && yearLabel
+        ? { parentSlug: section.yearOf, yearLabel }
+        : undefined,
     );
 
     ok++;
@@ -508,7 +612,13 @@ async function main() {
   await rebuildMenu();
 
   const count = await prisma.page.count();
-  console.log('Done.', { ok, fail, totalPages: count, mapped: SECTION_SOURCES.length });
+  console.log('Done.', {
+    ok,
+    fail,
+    skipped,
+    totalPages: count,
+    mapped: SECTION_SOURCES.length,
+  });
 }
 
 main()

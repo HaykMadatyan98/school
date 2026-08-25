@@ -5,10 +5,15 @@ import { Link } from "@/i18n/navigation";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { YearPicker } from "@/components/year-picker";
-import { renderContent } from "@/components/content";
+import {
+  renderContent,
+  stripDuplicateTitle,
+  stripRedundantYearNav,
+} from "@/components/content";
 import { useAppLocale } from "@/components/locale-provider";
 import { mediaUrl, tLocal, type Page } from "@/lib/api";
 import { LOGO_SRC } from "@/lib/brand";
+import { isPeopleListPage } from "@/lib/staff-content";
 
 /** Drop duplicate H2 + keep a short lead before staff cards. */
 function splitStaffContent(content: string, title: string) {
@@ -32,6 +37,16 @@ function splitStaffContent(content: string, title: string) {
   return { lead, body };
 }
 
+function preparePageContent(
+  raw: string,
+  title: string,
+  opts: { hasYearPicker: boolean },
+) {
+  let next = stripDuplicateTitle(raw, title);
+  if (opts.hasYearPicker) next = stripRedundantYearNav(next);
+  return next;
+}
+
 type Props = {
   page: Page;
   yearPages?: Page[];
@@ -41,14 +56,19 @@ type Props = {
 export function CmsPageView({ page, yearPages = [], parentPage = null }: Props) {
   const t = useTranslations("pages");
   const { locale } = useAppLocale();
-  const content = tLocal(page.content, locale);
-  const hasStaffCards = content.includes(":::person");
   const title = tLocal(page.title, locale);
+  const isYearPage = Boolean(page.parentSlug && page.yearLabel);
+  const showYearGrid = !isYearPage && yearPages.length > 0;
+  const hasYearPicker = showYearGrid || (isYearPage && yearPages.length > 1);
+  const content = preparePageContent(
+    tLocal(page.content, locale),
+    title,
+    { hasYearPicker },
+  );
+  const hasStaffCards = content.includes(":::person");
   const staff = hasStaffCards
     ? splitStaffContent(content, title)
     : { lead: "", body: content };
-  const isYearPage = Boolean(page.parentSlug && page.yearLabel);
-  const showYearGrid = !isYearPage && yearPages.length > 0;
 
   const crumbs = [
     { label: t("home"), href: "/" as const },
@@ -116,7 +136,9 @@ export function CmsPageView({ page, yearPages = [], parentPage = null }: Props) 
               </p>
             ) : null}
             <div className="prose-school">
-              {renderContent(staff.body, mediaUrl)}
+              {renderContent(staff.body, mediaUrl, {
+                peopleLayout: isPeopleListPage(page.slug) ? "list" : "cards",
+              })}
             </div>
           </div>
         ) : (

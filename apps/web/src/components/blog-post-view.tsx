@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { SiteFooter, SiteHeader } from "@/components/site-chrome";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { renderContent } from "@/components/content";
+import { renderContent, stripDuplicateTitle } from "@/components/content";
 import { useAppLocale } from "@/components/locale-provider";
 import {
   formatDate,
@@ -17,8 +17,8 @@ import { LOGO_SRC } from "@/lib/brand";
 export function BlogPostView({ post }: { post: Post }) {
   const t = useTranslations("blog");
   const { locale } = useAppLocale();
-  const content = tLocal(post.content, locale);
   const title = tLocal(post.title, locale);
+  const content = stripDuplicateTitle(tLocal(post.content, locale), title);
 
   return (
     <div>

@@ -293,6 +293,10 @@ const MENU: MenuNode[] = [
         label: L('Voluntary attestation', 'Добровольная аттестация', 'Կամավոր ատեստավորում'),
         href: '/p/voluntary-attestation',
       },
+      {
+        label: L('Qualification rank', 'Квалификационный разряд', 'Տարակարգ'),
+        href: '/p/tarakarg',
+      },
     ],
   },
   {

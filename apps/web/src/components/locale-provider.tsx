@@ -23,7 +23,11 @@ export function LocaleProvider({
 }) {
   return (
     <LocaleContext.Provider value={{ locale: initialLocale }}>
-      <NextIntlClientProvider locale={initialLocale} messages={initialMessages}>
+      <NextIntlClientProvider
+        locale={initialLocale}
+        messages={initialMessages}
+        timeZone="Asia/Yerevan"
+      >
         {children}
       </NextIntlClientProvider>
     </LocaleContext.Provider>

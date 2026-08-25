@@ -118,7 +118,16 @@ export function normalizeStaffBio(raw: string): string {
 
 export function isStaffPageContent(markdown: string, slug?: string) {
   if (/:::person/.test(markdown)) return true;
-  return slug === "staff" || slug === "teachers";
+  return (
+    slug === "staff" ||
+    slug === "teachers" ||
+    slug === "parent-council"
+  );
+}
+
+/** Councils / committees: name + role list (no photo cards). */
+export function isPeopleListPage(slug?: string) {
+  return slug === "parent-council";
 }
 
 export function parseStaffContent(markdown: string): {
@@ -185,7 +194,7 @@ export function serializeStaffContent(
     if (!photo && !name) continue;
     lines.push(":::person");
     if (photo) lines.push(`![${name}](${photo})`);
-    else lines.push(`![${name}]()`);
+    else lines.push(`![${name}](#)`);
     if (p.role.trim()) lines.push(`**${p.role.trim()}**`);
     if (p.bio.trim()) lines.push(normalizeStaffBio(p.bio.trim()));
     lines.push(":::", "");

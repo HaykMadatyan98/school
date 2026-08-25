@@ -56,11 +56,14 @@ function absUrl(u: string) {
 
 function isJunk(url: string) {
   const u = url.toLowerCase();
+  // Keep camera portraits even if Weebly stored them as *_orig.jpg
+  // (director photo is dsc-3757_orig.jpg with text BEFORE the image).
+  const isCameraPortrait = /(?:^|\/)(?:dsc|img|photo|pict)[-_]?\d+/i.test(u);
   return (
     u.includes('background-images/') ||
     u.includes('footer-toast') ||
     u.includes('/download.jpg') ||
-    u.includes('_orig.') ||
+    (u.includes('_orig.') && !isCameraPortrait) ||
     /\/published\/78-1\.jpg$/i.test(u) ||
     /icon|logo|button|spacer|facebook|twitter|weebly|toast/i.test(u)
   );
@@ -242,7 +245,25 @@ function extractPeople(html: string): Person[] {
       .slice(m[0].length)
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<[^>]+>/g, ' ');
-    const plain = clean(after);
+    let plain = clean(after);
+
+    // Some cards (director) put the bio BEFORE the photo — fall back to preceding text
+    if (
+      !/[\u0531-\u0587]/.test(plain.slice(0, 80)) ||
+      /ՆՈՐՈւԹՅՈւՆ|Create your own|Powered by/i.test(plain.slice(0, 80))
+    ) {
+      const beforeHtml = decoded.slice(Math.max(0, m.index! - 1800), m.index!);
+      const beforePlain = clean(
+        beforeHtml.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, ' '),
+      );
+      // Prefer the last person-like chunk before this image
+      const cut = beforePlain.split(/(?=\d{1,3}\s+[\u0531-\u0587]{3,})/).pop();
+      const candidate = clean(cut || beforePlain).slice(-700);
+      if (/[\u0531-\u0587]/.test(candidate) && BIO_START.test(candidate)) {
+        plain = candidate;
+      }
+    }
+
     if (!/[\u0531-\u0587]/.test(plain)) continue;
     if (/ՆՈՐՈւԹՅՈւՆ|Create your own|Powered by/i.test(plain.slice(0, 80))) {
       continue;
@@ -251,6 +272,17 @@ function extractPeople(html: string): Person[] {
     let { name, role, bio } = splitNameRoleBio(plain);
     if (nameFromMarkup) name = nameFromMarkup;
     if (roleFromMarkup) role = roleFromMarkup;
+
+    // Director heading nearby (ՏՆՕՐԵՆ) when role missing
+    if (!role) {
+      const ahead = decoded.slice(Math.max(0, m.index! - 500), m.index!);
+      if (/ՏՆՕՐԵՆ|Տնօրեն/i.test(ahead) && !/տեղակալ|փոխտնօրեն/i.test(ahead)) {
+        role = 'Տնօրեն';
+      } else if (/ընտրվել է .{0,40}տնօրեն/i.test(bio) && !/տեղակալ/i.test(bio)) {
+        role = 'Տնօրեն';
+      }
+    }
+
     // Keep inferred short roles tidy
     if (role.length > 70) {
       role = role.split(/[։.]/)[0].trim().slice(0, 70);
@@ -303,6 +335,16 @@ async function main() {
   const html = await res.text();
   const people = extractPeople(html);
   if (people.length < 5) throw new Error(`Too few people: ${people.length}`);
+
+  // Director first
+  people.sort((a, b) => {
+    const rank = (p: Person) =>
+      /^տնօրեն$/i.test(p.role.trim()) ||
+      (/տնօրեն/i.test(p.role) && !/տեղակալ|փոխ/i.test(p.role))
+        ? 0
+        : 1;
+    return rank(a) - rank(b);
+  });
 
   const cover = people[0]?.photo || null;
   const staffAm = toMarkdown(

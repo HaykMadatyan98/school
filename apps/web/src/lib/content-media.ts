@@ -3,15 +3,24 @@
 export type PageImage = { url: string; alt: string };
 export type PagePdf = { url: string; label: string };
 
+/** PDF / DOCX / other downloadable docs (incl. Drive file links). */
 export function isPdfHref(href: string, label = "") {
   return (
-    /\.pdf(\b|$)/i.test(href) ||
-    /\.pdf$/i.test(label) ||
+    /\.(pdf|docx?|xlsx?|pptx?)(\b|$)/i.test(href) ||
+    /\.(pdf|docx?|xlsx?|pptx?)$/i.test(label) ||
     href.includes("mock-document") ||
     /drive\.google\.com\/file\/d\//i.test(href) ||
     (/drive\.google\.com\/uc\?/i.test(href) &&
       /export=download/i.test(href))
   );
+}
+
+export function docBadgeLabel(href: string, label = "") {
+  const from = `${label} ${href}`;
+  if (/\.docx?(\b|$)/i.test(from)) return "DOC";
+  if (/\.xlsx?(\b|$)/i.test(from)) return "XLS";
+  if (/\.pptx?(\b|$)/i.test(from)) return "PPT";
+  return "PDF";
 }
 
 function cleanText(md: string) {

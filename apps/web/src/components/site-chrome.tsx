@@ -70,7 +70,7 @@ function DesktopNav({ items, locale }: { items: MenuItem[]; locale: string }) {
 
   return (
     <nav
-      className="flex w-full justify-center flex-wrap items-center gap-x-1 gap-y-0.5"
+      className="flex w-full flex-nowrap items-center justify-center gap-x-0 px-[var(--space-page-x)]"
       aria-label="Main"
     >
       {items.map((item) => {
@@ -88,7 +88,7 @@ function DesktopNav({ items, locale }: { items: MenuItem[]; locale: string }) {
             <MenuLink
               item={item}
               locale={locale}
-              className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-2 text-[0.8125rem] font-medium leading-none tracking-wide transition ${
+              className={`inline-flex items-center gap-0.5 whitespace-nowrap rounded-md px-1.5 py-2 text-[0.72rem] font-medium leading-none tracking-wide transition lg:px-2 lg:text-[0.78rem] xl:px-2.5 xl:text-[0.8125rem] ${
                 open
                   ? "bg-white/12 text-white"
                   : "text-white/85 hover:bg-white/10 hover:text-white"
@@ -99,7 +99,7 @@ function DesktopNav({ items, locale }: { items: MenuItem[]; locale: string }) {
             </MenuLink>
             {hasChildren && open && (
               <div className="absolute left-0 top-full z-[60] min-w-[13.5rem] pt-1.5">
-                <div className="max-h-[min(70vh,28rem)] overflow-y-auto overflow-x-hidden rounded-[var(--radius-md)] border border-white/10 bg-ink/95 py-1.5 shadow-xl backdrop-blur-md">
+                <div className="rounded-[var(--radius-md)] border border-white/10 bg-ink/95 py-1.5 shadow-xl backdrop-blur-md">
                   {item.children!.map((child) => (
                     <div key={child.id} className="group/sub relative">
                       <MenuLink
@@ -114,7 +114,7 @@ function DesktopNav({ items, locale }: { items: MenuItem[]; locale: string }) {
                       </MenuLink>
                       {!!child.children?.length && (
                         <div className="invisible absolute left-full top-0 z-50 ml-1 min-w-[12.5rem] opacity-0 transition group-hover/sub:visible group-hover/sub:opacity-100">
-                          <div className="max-h-[min(70vh,28rem)] overflow-y-auto rounded-[var(--radius-md)] border border-white/10 bg-ink/95 py-1.5 shadow-xl">
+                          <div className="rounded-[var(--radius-md)] border border-white/10 bg-ink/95 py-1.5 shadow-xl">
                             {child.children.map((grand) => (
                               <MenuLink
                                 key={grand.id}
@@ -299,9 +299,9 @@ export function SiteHeader() {
             </div>
           </div>
         </div>
-        <div className="hidden w-full items-center justify-center border-t border-white/10 py-1.5 xl:block">
-            <DesktopNav items={menu} locale={locale} />
-          </div>
+        <div className="hidden w-full border-t border-white/10 py-1.5 xl:block">
+          <DesktopNav items={menu} locale={locale} />
+        </div>
       </div>
 
       {open && (
