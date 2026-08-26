@@ -280,11 +280,57 @@ export function stripRedundantYearNav(content: string) {
 }
 
 /** Markdown-ish renderer with gallery sliders and staff person cards */
+/** Raw Weebly HTML import — keep layout, proxy Drive / legacy media URLs. */
+function rewriteHtmlMedia(
+  html: string,
+  resolveUrl: (u: string) => string,
+): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(
+      /\b(src|href|data-src)=["']([^"']+)["']/gi,
+      (full, attr: string, url: string) => {
+        const resolved = resolveUrl(url.trim()) || url.trim();
+        if (!resolved || resolved === url) return full;
+        return `${attr}="${resolved}"`;
+      },
+    );
+}
+
+function WsiteHtmlBlock({
+  html,
+  resolveUrl,
+}: {
+  html: string;
+  resolveUrl: (u: string) => string;
+}) {
+  const safe = rewriteHtmlMedia(html, resolveUrl);
+  return (
+    <div
+      className="wsite-import not-prose"
+      // Trusted CMS import from school78 scrape (scripts stripped).
+      dangerouslySetInnerHTML={{ __html: safe }}
+    />
+  );
+}
+
+function extractWsiteHtml(content: string): string | null {
+  const m = content.match(/^:::wsite-html\s*\n([\s\S]*?)\n:::\s*$/);
+  if (m) return m[1];
+  const m2 = content.match(/:::wsite-html\s*\n([\s\S]*?)\n:::/);
+  return m2 ? m2[1] : null;
+}
+
 export function renderContent(
   content: string,
   resolveUrl: (u: string) => string,
   options: RenderContentOptions = {},
 ) {
+  const wsite = extractWsiteHtml(content.trim());
+  if (wsite) {
+    return <WsiteHtmlBlock html={wsite} resolveUrl={resolveUrl} />;
+  }
+
   const peopleLayout = options.peopleLayout || "cards";
   // TipTap often emits images glued on one line — split for cleaner parsing
   const normalized = content.replace(/\)\s*!\[/g, ")\n![");

@@ -31,6 +31,8 @@
     "clean:weebly-junk": "tsx scripts/clean-weebly-junk.ts",
     "fix:page-chrome": "tsx scripts/fix-page-chrome.ts",
     "migrate:media-drive": "tsx scripts/migrate-all-media-to-drive.ts",
+    "resync:wsite": "tsx scripts/resync-wsite-sections.ts",
+    "import:fresh-wsite": "tsx scripts/fresh-wsite-import.ts",
     "sync:staff": "tsx scripts/sync-staff-cards.ts",
     "normalize:staff-bios": "tsx scripts/normalize-staff-bios.ts",
     "add:director": "tsx scripts/add-director.ts",

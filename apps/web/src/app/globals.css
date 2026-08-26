@@ -223,6 +223,43 @@ a {
   text-decoration: none;
 }
 
+/* Raw Weebly section HTML (fresh import) */
+.wsite-import {
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.wsite-import img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.75rem auto;
+}
+
+.wsite-import iframe {
+  max-width: 100%;
+}
+
+.wsite-import a {
+  color: var(--accent-deep);
+  font-weight: 500;
+}
+
+.wsite-import table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.wsite-import td,
+.wsite-import th {
+  border: 1px solid var(--line);
+  padding: 0.4rem 0.6rem;
+  vertical-align: top;
+}
+
 /* Hide broken / empty images in the admin editor */
 .ProseMirror img:not([src]),
 .ProseMirror img[src=""],

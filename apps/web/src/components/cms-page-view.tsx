@@ -42,6 +42,8 @@ function preparePageContent(
   title: string,
   opts: { hasYearPicker: boolean },
 ) {
+  // Raw Weebly HTML — do not run markdown chrome strippers
+  if (/:::wsite-html/.test(raw)) return raw;
   let next = stripDuplicateTitle(raw, title);
   if (opts.hasYearPicker) next = stripRedundantYearNav(next);
   return next;
