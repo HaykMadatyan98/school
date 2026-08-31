@@ -39,11 +39,6 @@ export function BlogPostView({ post }: { post: Post }) {
             </span>
           </div>
           <h1 className="text-page-title text-white">{title}</h1>
-          {post.author && (
-            <p className="mt-3 text-[length:var(--text-sm)] text-white/75 md:mt-4">
-              {t("author")}: {post.author.name}
-            </p>
-          )}
         </div>
       </div>
 

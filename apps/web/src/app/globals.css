@@ -204,6 +204,18 @@ a {
   margin: 0.85rem 0;
 }
 
+.prose-school ul {
+  list-style-type: disc;
+}
+
+.prose-school ol {
+  list-style-type: decimal;
+}
+
+.prose-school li {
+  margin: 0.35rem 0;
+}
+
 .prose-school p {
   margin: 0.85rem 0;
 }
