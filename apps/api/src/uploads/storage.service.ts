@@ -272,7 +272,7 @@ export class StorageService {
 
   async uploadLocalFile(
     file: Express.Multer.File,
-    folderHint = 'school78',
+    folderHint = 'school',
   ): Promise<StoredFile> {
     if (!this.drive || !this.folderId) {
       throw new Error('Google Drive is not connected');
@@ -332,7 +332,7 @@ export class StorageService {
 
   async uploadFromUrl(
     remoteUrl: string,
-    folderHint = 'school78/migrated',
+    folderHint = 'school/migrated',
   ): Promise<StoredFile> {
     if (!this.drive || !this.folderId) {
       return { url: remoteUrl, storage: 'local' };

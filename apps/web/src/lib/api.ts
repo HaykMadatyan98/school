@@ -144,9 +144,9 @@ export function extractDriveFileId(path?: string | null): string | null {
 
 export function mediaUrl(path?: string | null) {
   if (!path) return "";
-  if (/school78\.safe\.am|weebly\.com|unsplash\.com/i.test(path)) {
-    // Prefer Drive when possible; keep legacy URLs visible until migrated
-    // (blanking them made galleries look empty after scrape).
+  // Never serve legacy Weebly / old-site hosts
+  if (/school78\.safe\.am|weebly\.com|editmysite\.com/i.test(path)) {
+    return "";
   }
 
   // Proxy Google Drive through API — browser hotlinking hits 429

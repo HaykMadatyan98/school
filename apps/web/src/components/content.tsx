@@ -144,7 +144,41 @@ function inlineFormat(
     last = match.index + match[0].length;
   }
   if (last < text.length) parts.push(text.slice(last));
-  return parts;
+  return applyInlineEmphasis(parts, keyPrefix);
+}
+
+/** Turn **bold** and *italic* in string fragments into elements. */
+function applyInlineEmphasis(parts: ReactNode[], keyPrefix: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let n = 0;
+  for (const part of parts) {
+    if (typeof part !== "string") {
+      out.push(part);
+      continue;
+    }
+    const re = /(\*\*(.+?)\*\*|\*(.+?)\*|_(.+?)_)/g;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(part))) {
+      if (m.index > last) out.push(part.slice(last, m.index));
+      if (m[2]) {
+        out.push(
+          <strong key={`${keyPrefix}-b-${n++}`} className="font-semibold text-ink">
+            {m[2]}
+          </strong>,
+        );
+      } else if (m[3] || m[4]) {
+        out.push(
+          <em key={`${keyPrefix}-i-${n++}`} className="text-ink-soft not-italic">
+            {m[3] || m[4]}
+          </em>,
+        );
+      }
+      last = m.index + m[0].length;
+    }
+    if (last < part.length) out.push(part.slice(last));
+  }
+  return out;
 }
 
 /** Pull consecutive markdown images from the start of a line (TipTap may glue them). */
@@ -290,8 +324,13 @@ function rewriteHtmlMedia(
     .replace(
       /\b(src|href|data-src)=["']([^"']+)["']/gi,
       (full, attr: string, url: string) => {
-        const resolved = resolveUrl(url.trim()) || url.trim();
-        if (!resolved || resolved === url) return full;
+        const raw = url.trim();
+        if (/school78\.safe\.am|weebly\.com|editmysite\.com/i.test(raw)) {
+          if (attr.toLowerCase() === "href") return `${attr}="/"`;
+          return `${attr}=""`;
+        }
+        const resolved = resolveUrl(raw) || raw;
+        if (!resolved || resolved === raw) return full;
         return `${attr}="${resolved}"`;
       },
     );
@@ -308,7 +347,7 @@ function WsiteHtmlBlock({
   return (
     <div
       className="wsite-import not-prose"
-      // Trusted CMS import from school78 scrape (scripts stripped).
+      // Trusted CMS HTML import (scripts stripped at scrape time).
       dangerouslySetInnerHTML={{ __html: safe }}
     />
   );
@@ -563,14 +602,19 @@ export function renderContent(
       continue;
     }
     if (/^\d+\.\s/.test(line)) {
+      const items: string[] = [];
+      const start = Number(line.match(/^(\d+)/)?.[1] || 1);
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\.\s*/, ""));
+        i++;
+      }
       nodes.push(
-        <ol key={i} start={Number(line.match(/^(\d+)/)?.[1] || 1)}>
-          <li>
-            {inlineFormat(line.replace(/^\d+\.\s/, ""), `oli-${i}`, resolveUrl)}
-          </li>
+        <ol key={`ol-${i}`} start={start}>
+          {items.map((item, idx) => (
+            <li key={idx}>{inlineFormat(item, `oli-${i}-${idx}`, resolveUrl)}</li>
+          ))}
         </ol>,
       );
-      i++;
       continue;
     }
     if (!line.trim()) {

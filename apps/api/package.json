@@ -36,7 +36,8 @@
     "sync:staff": "tsx scripts/sync-staff-cards.ts",
     "normalize:staff-bios": "tsx scripts/normalize-staff-bios.ts",
     "add:director": "tsx scripts/add-director.ts",
-    "seed:mock": "tsx scripts/seed-mock.ts"
+    "seed:mock": "tsx scripts/seed-mock.ts",
+    "seed:bufet-tender": "tsx scripts/seed-buffet-tender-announcement.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
