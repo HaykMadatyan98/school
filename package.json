@@ -13,6 +13,7 @@
     "start": "npm run start:prod -w api",
     "db:up": "docker compose up -d",
     "db:setup": "npm run db:setup -w api",
-    "seed": "npm run prisma:seed -w api"
+    "seed": "npm run prisma:seed -w api",
+    "fix:wsite-images": "npm run fix:wsite-images -w api"
   }
 }

@@ -37,7 +37,10 @@
     "normalize:staff-bios": "tsx scripts/normalize-staff-bios.ts",
     "add:director": "tsx scripts/add-director.ts",
     "seed:mock": "tsx scripts/seed-mock.ts",
-    "seed:bufet-tender": "tsx scripts/seed-buffet-tender-announcement.ts"
+    "seed:bufet-tender": "tsx scripts/seed-buffet-tender-announcement.ts",
+    "seed:assessment-2025-2026": "tsx scripts/seed-assessment-2025-2026.ts",
+    "fix:wsite-downloads": "tsx scripts/fix-wsite-download-blocks.ts",
+    "fix:wsite-images": "tsx scripts/fix-wsite-image-urls.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

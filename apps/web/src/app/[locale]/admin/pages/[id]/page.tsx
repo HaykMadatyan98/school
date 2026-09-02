@@ -15,6 +15,7 @@ import {
   type PageImage,
   type PagePdf,
 } from "@/lib/content-media";
+import { buildWsiteContent, parseWsiteContent } from "@/lib/wsite-content";
 import {
   isPeopleListPage,
   isStaffPageContent,
@@ -49,6 +50,9 @@ type FormState = {
   parentSlug: string;
   yearLabel: string;
   listMode: boolean;
+  wsiteMode: boolean;
+  wsiteHtml: string;
+  htmlEditEnabled: boolean;
 };
 
 type TabId = "text" | "media";
@@ -68,6 +72,9 @@ const empty: FormState = {
   parentSlug: "",
   yearLabel: "",
   listMode: false,
+  wsiteMode: false,
+  wsiteHtml: "",
+  htmlEditEnabled: false,
 };
 
 const fieldClass =
@@ -153,8 +160,10 @@ export default function AdminPageEditor() {
     api<Page>(`/pages/admin/${params.id}`, { token })
       .then((page) => {
         const content = asLocalized(page.content);
-        const split = splitContentAndMedia(content.am || "");
-        const staffMode = isStaffPageContent(split.text, page.slug);
+        const wsite = parseWsiteContent(content.am || "");
+        const split = splitContentAndMedia(wsite.prefix);
+        const staffMode =
+          !wsite.hasWsite && isStaffPageContent(split.text, page.slug);
         const listMode = isPeopleListPage(page.slug);
         const staff = staffMode
           ? parseStaffContent(split.text)
@@ -174,6 +183,9 @@ export default function AdminPageEditor() {
           parentSlug: page.parentSlug || "",
           yearLabel: page.yearLabel || "",
           listMode,
+          wsiteMode: wsite.hasWsite,
+          wsiteHtml: wsite.wsiteInner,
+          htmlEditEnabled: false,
         });
         setSlugTouched(true);
       })
@@ -186,11 +198,14 @@ export default function AdminPageEditor() {
     const bodyText = form.staffMode
       ? serializeStaffContent(form.title.am, form.staffIntro, form.staffPeople)
       : form.text;
-    const contentAm = mergeContentAndMedia(
+    const merged = mergeContentAndMedia(
       bodyText,
       form.listMode ? [] : form.images,
       form.pdfs,
     );
+    const contentAm = form.wsiteMode
+      ? buildWsiteContent(merged, form.wsiteHtml)
+      : merged;
     if (!form.title.am.trim() || !contentAm.trim()) {
       setError(t("requiredAllLangs"));
       return;
@@ -385,6 +400,15 @@ export default function AdminPageEditor() {
               </span>
             </div>
 
+            {form.wsiteMode ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                <p className="font-semibold">{t("wsiteImportBannerTitle")}</p>
+                <p className="mt-1 text-amber-900/90">
+                  {t("wsiteImportBannerBody")}
+                </p>
+              </div>
+            ) : null}
+
             <div>
               {form.staffMode ? (
                 <StaffCardsEditor
@@ -400,6 +424,58 @@ export default function AdminPageEditor() {
                   }
                   onError={setError}
                 />
+              ) : form.wsiteMode ? (
+                <div className="space-y-4">
+                  {form.text.trim() ? (
+                    <div>
+                      <p className="mb-2 text-sm font-medium text-ink">
+                        {t("wsitePrefixContent")}
+                      </p>
+                      <RichTextEditor
+                        textOnly
+                        value={form.text}
+                        onChange={(text) => setForm((f) => ({ ...f, text }))}
+                      />
+                    </div>
+                  ) : null}
+
+                  <details className="rounded-lg border border-[var(--line)] bg-mist/30">
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-ink">
+                      {t("wsiteHtmlSection")} ({t("wsiteHtmlReadOnly")})
+                    </summary>
+                    <div className="space-y-3 border-t border-[var(--line)] px-4 py-3">
+                      <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-ink">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-[var(--line)]"
+                          checked={form.htmlEditEnabled}
+                          onChange={(e) =>
+                            setForm((f) => ({
+                              ...f,
+                              htmlEditEnabled: e.target.checked,
+                            }))
+                          }
+                        />
+                        {t("wsiteHtmlEditEnable")}
+                      </label>
+                      <textarea
+                        className={`${fieldClass} font-mono text-xs leading-relaxed ${form.htmlEditEnabled ? "" : "cursor-not-allowed bg-mist/60 text-ink-soft"}`}
+                        rows={12}
+                        readOnly={!form.htmlEditEnabled}
+                        value={form.wsiteHtml}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, wsiteHtml: e.target.value }))
+                        }
+                        spellCheck={false}
+                      />
+                      {form.htmlEditEnabled ? (
+                        <p className="text-xs text-amber-800">
+                          {t("wsiteHtmlEditWarning")}
+                        </p>
+                      ) : null}
+                    </div>
+                  </details>
+                </div>
               ) : (
                 <>
                   <p className="mb-2 text-sm font-medium text-ink">
