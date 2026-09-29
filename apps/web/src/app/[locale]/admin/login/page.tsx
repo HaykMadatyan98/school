@@ -10,8 +10,8 @@ export default function AdminLoginPage() {
   const t = useTranslations("admin");
   const { login } = useAuth();
   const router = useRouter();
-  const [email, setEmail] = useState("admin@school.local");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 

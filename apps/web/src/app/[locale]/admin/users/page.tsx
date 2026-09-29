@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { api, ApiError, type Role, type User } from "@/lib/api";
+import { SearchableSelect } from "@/components/searchable-select";
 
 export default function AdminUsersPage() {
   const t = useTranslations("admin");
@@ -88,14 +89,16 @@ export default function AdminUsersPage() {
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           className="rounded-md border border-[var(--line)] px-3 py-2"
         />
-        <select
+        <SearchableSelect
           value={form.role}
-          onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-          className="rounded-md border border-[var(--line)] px-3 py-2"
-        >
-          <option value="EDITOR">{t("editor")}</option>
-          <option value="ADMIN">{t("adminRole")}</option>
-        </select>
+          onChange={(role) => setForm({ ...form, role: role as Role })}
+          options={[
+            { value: "EDITOR", label: t("editor") },
+            { value: "ADMIN", label: t("adminRole") },
+          ]}
+          className="rounded-md"
+          aria-label={t("role")}
+        />
         <button
           type="submit"
           className="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-white sm:col-span-2 sm:w-fit"

@@ -9,6 +9,7 @@ import {
   ViewOnSiteLink,
 } from "@/components/admin-preview";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { SearchableSelect } from "@/components/searchable-select";
 import { useAuth } from "@/lib/auth";
 import {
   api,
@@ -310,31 +311,34 @@ export default function AdminPostEditorPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm">
             {t("status")}
-            <select
-              value={form.status}
-              onChange={(e) =>
-                setForm({ ...form, status: e.target.value as PostStatus })
-              }
-              className={fieldClass}
-            >
-              <option value="DRAFT">{t("draft")}</option>
-              <option value="PUBLISHED">{t("published")}</option>
-            </select>
+            <div className="mt-1">
+              <SearchableSelect
+                value={form.status}
+                onChange={(status) =>
+                  setForm({ ...form, status: status as PostStatus })
+                }
+                options={[
+                  { value: "DRAFT", label: t("draft") },
+                  { value: "PUBLISHED", label: t("published") },
+                ]}
+              />
+            </div>
           </label>
           <label className="block text-sm">
             {t("category")}
-            <select
-              value={form.categoryId}
-              onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-              className={fieldClass}
-            >
-              <option value="">{t("noCategory")}</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {typeof c.name === "string" ? c.name : tLocal(c.name)}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <SearchableSelect
+                value={form.categoryId}
+                onChange={(categoryId) => setForm({ ...form, categoryId })}
+                options={[
+                  { value: "", label: t("noCategory") },
+                  ...categories.map((c) => ({
+                    value: c.id,
+                    label: typeof c.name === "string" ? c.name : tLocal(c.name),
+                  })),
+                ]}
+              />
+            </div>
           </label>
         </div>
         {error && <p className="text-sm text-red-700">{error}</p>}

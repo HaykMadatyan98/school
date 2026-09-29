@@ -17,11 +17,21 @@ import {
   tLocal,
   type LocalizedText,
   type MenuItem,
+  type Page,
 } from "@/lib/api";
 import { useAppLocale } from "@/components/locale-provider";
+import { SearchableSelect } from "@/components/searchable-select";
+import { Link } from "@/i18n/navigation";
 
 const fieldClass =
   "mt-1 w-full rounded-md border border-[var(--line)] bg-white/85 px-3 py-2 outline-none focus:border-accent";
+
+type LinkMode = "page" | "custom";
+
+function hrefToPageSlug(href: string) {
+  const m = href.trim().match(/^\/p\/([^/?#]+)/);
+  return m?.[1] || "";
+}
 
 type DropWhere = "before" | "after" | "into";
 
@@ -65,16 +75,20 @@ export default function AdminMenuPage() {
   const { token } = useAuth();
   const [tree, setTree] = useState<MenuItem[]>([]);
   const [flat, setFlat] = useState<MenuItem[]>([]);
+  const [pages, setPages] = useState<Page[]>([]);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [label, setLabel] = useState<LocalizedText>(emptyLocalized());
   const [href, setHref] = useState("/");
+  const [linkMode, setLinkMode] = useState<LinkMode>("page");
+  const [pageSlug, setPageSlug] = useState("");
   const [parentId, setParentId] = useState("");
   const [visible, setVisible] = useState(true);
   const [openInNewTab, setOpenInNewTab] = useState(false);
   const [pending, setPending] = useState(false);
+  const [creatingPage, setCreatingPage] = useState(false);
   const [moving, setMoving] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{
@@ -85,12 +99,14 @@ export default function AdminMenuPage() {
   async function load() {
     if (!token) return;
     try {
-      const [tData, fData] = await Promise.all([
+      const [tData, fData, pData] = await Promise.all([
         api<MenuItem[]>("/menu/admin/tree", { token }),
         api<MenuItem[]>("/menu/admin/flat", { token }),
+        api<Page[]>("/pages/admin/all", { token }),
       ]);
       setTree(tData);
       setFlat(fData);
+      setPages(pData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
     }
@@ -100,6 +116,24 @@ export default function AdminMenuPage() {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  const pageOptions = useMemo(
+    () =>
+      [...pages]
+        .sort((a, b) =>
+          tLocal(a.title, locale).localeCompare(tLocal(b.title, locale), locale),
+        )
+        .map((p) => ({
+          value: p.slug,
+          label: `${tLocal(p.title, locale)} (/p/${p.slug})`,
+        })),
+    [pages, locale],
+  );
+
+  const selectedPage = useMemo(
+    () => pages.find((p) => p.slug === pageSlug) || null,
+    [pages, pageSlug],
+  );
 
   const blockedDropIds = useMemo(() => {
     if (!dragId) return new Set<string>();
@@ -114,6 +148,8 @@ export default function AdminMenuPage() {
     setEditingId(null);
     setLabel(emptyLocalized());
     setHref("/");
+    setLinkMode("page");
+    setPageSlug("");
     setParentId("");
     setVisible(true);
     setOpenInNewTab(false);
@@ -124,6 +160,8 @@ export default function AdminMenuPage() {
     setEditingId(null);
     setLabel(emptyLocalized());
     setHref("/");
+    setLinkMode("page");
+    setPageSlug("");
     setParentId("");
     setVisible(true);
     setOpenInNewTab(false);
@@ -138,6 +176,14 @@ export default function AdminMenuPage() {
         : { am: item.label.am || "" },
     );
     setHref(item.href);
+    const slug = hrefToPageSlug(item.href);
+    if (slug) {
+      setLinkMode("page");
+      setPageSlug(slug);
+    } else {
+      setLinkMode("custom");
+      setPageSlug("");
+    }
     setParentId(item.parentId || "");
     setVisible(item.visible);
     setOpenInNewTab(item.openInNewTab);
@@ -148,6 +194,43 @@ export default function AdminMenuPage() {
     setExpanded((s) => ({ ...s, [id]: !s[id] }));
   }
 
+  function applyPageSlug(slug: string) {
+    setPageSlug(slug);
+    setHref(slug ? `/p/${slug}` : "/");
+  }
+
+  async function createLinkedPage() {
+    if (!token) return;
+    const title = label.am.trim();
+    if (!title) {
+      setError(t("menuLabelRequired"));
+      return;
+    }
+    setCreatingPage(true);
+    setError("");
+    try {
+      const created = await api<Page>("/pages", {
+        method: "POST",
+        token,
+        body: {
+          title: { am: title },
+          content: { am: `## ${title}\n\n` },
+          status: "DRAFT",
+        },
+      });
+      setPages((prev) => {
+        if (prev.some((p) => p.id === created.id)) return prev;
+        return [...prev, created];
+      });
+      setLinkMode("page");
+      applyPageSlug(created.slug);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error");
+    } finally {
+      setCreatingPage(false);
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!token) return;
@@ -155,11 +238,25 @@ export default function AdminMenuPage() {
       setError(t("requiredAllLangs"));
       return;
     }
+    const finalHref =
+      linkMode === "page"
+        ? pageSlug
+          ? `/p/${pageSlug}`
+          : ""
+        : href.trim();
+    if (linkMode === "page" && !pageSlug) {
+      setError(t("menuPageRequired"));
+      return;
+    }
+    if (!finalHref) {
+      setError(t("menuPageRequired"));
+      return;
+    }
     setPending(true);
     setError("");
     const body = {
       label: { am: label.am.trim() },
-      href,
+      href: finalHref,
       visible,
       openInNewTab,
       parentId: parentId || null,
@@ -488,30 +585,95 @@ export default function AdminMenuPage() {
 
           <label className="block text-sm">
             {t("href")}
-            <input
-              className={fieldClass}
-              value={href}
-              onChange={(e) => setHref(e.target.value)}
-              placeholder="/p/about or https://…"
-            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setLinkMode("page");
+                  if (pageSlug) setHref(`/p/${pageSlug}`);
+                }}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                  linkMode === "page"
+                    ? "bg-accent text-white"
+                    : "border border-[var(--line)] bg-white text-ink-soft hover:text-ink"
+                }`}
+              >
+                {t("menuLinkPage")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setLinkMode("custom")}
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                  linkMode === "custom"
+                    ? "bg-accent text-white"
+                    : "border border-[var(--line)] bg-white text-ink-soft hover:text-ink"
+                }`}
+              >
+                {t("menuLinkCustom")}
+              </button>
+            </div>
           </label>
+
+          {linkMode === "page" ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-ink">{t("menuSelectPage")}</p>
+              <SearchableSelect
+                value={pageSlug}
+                onChange={applyPageSlug}
+                options={[
+                  { value: "", label: t("menuSelectPage") },
+                  ...pageOptions,
+                ]}
+              />
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled={creatingPage || pending}
+                  onClick={() => void createLinkedPage()}
+                  className="rounded-md border border-dashed border-accent/50 bg-accent/5 px-3 py-2 text-sm font-medium text-accent-deep hover:bg-accent/10 disabled:opacity-60"
+                >
+                  {creatingPage ? t("saving") : t("menuCreatePage")}
+                </button>
+                {selectedPage ? (
+                  <Link
+                    href={`/admin/pages/${selectedPage.id}`}
+                    className="text-sm text-accent-deep hover:underline"
+                  >
+                    {t("menuEditPage")}
+                  </Link>
+                ) : null}
+              </div>
+              <p className="text-xs text-ink-soft">{t("menuCreatePageHint")}</p>
+            </div>
+          ) : (
+            <label className="block text-sm">
+              {t("href")}
+              <input
+                className={fieldClass}
+                value={href}
+                onChange={(e) => setHref(e.target.value)}
+                placeholder="/p/about or https://…"
+              />
+            </label>
+          )}
 
           <label className="block text-sm">
             {t("parent")}
-            <select
-              className={fieldClass}
-              value={parentId}
-              onChange={(e) => setParentId(e.target.value)}
-            >
-              <option value="">{t("topLevel")}</option>
-              {flat
-                .filter((x) => x.id !== editingId)
-                .map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {tLocal(x.label, locale)}
-                  </option>
-                ))}
-            </select>
+            <div className="mt-1">
+              <SearchableSelect
+                value={parentId}
+                onChange={setParentId}
+                options={[
+                  { value: "", label: t("topLevel") },
+                  ...flat
+                    .filter((x) => x.id !== editingId)
+                    .map((x) => ({
+                      value: x.id,
+                      label: tLocal(x.label, locale),
+                    })),
+                ]}
+              />
+            </div>
           </label>
 
           <div className="flex flex-wrap gap-4 text-sm">

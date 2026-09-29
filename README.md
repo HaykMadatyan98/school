@@ -26,7 +26,6 @@ npm run dev:web   # :3000
 - Site: http://localhost:3000
 - Admin: http://localhost:3000/admin
 - Swagger: http://localhost:3001/api/docs
-- Login: `admin@school.local` / `admin123`
 
 At this stage the site uses **mock data** (no blog posts yet, logo-only imagery).
 

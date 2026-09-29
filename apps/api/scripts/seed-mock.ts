@@ -517,13 +517,15 @@ async function insertMenu(nodes: MenuNode[], parentId: string | null = null) {
 }
 
 async function main() {
-  // Admin user (idempotent)
-  const passwordHash = await bcrypt.hash('admin123', 10);
+  // Admin user (idempotent) — set ADMIN_EMAIL / ADMIN_PASSWORD in env
+  const email = process.env.ADMIN_EMAIL?.trim() || 'admin@school.local';
+  const password = process.env.ADMIN_PASSWORD?.trim() || 'admin123';
+  const passwordHash = await bcrypt.hash(password, 10);
   await prisma.user.upsert({
-    where: { email: 'admin@school.local' },
+    where: { email },
     update: {},
     create: {
-      email: 'admin@school.local',
+      email,
       name: 'Admin',
       passwordHash,
       role: Role.ADMIN,

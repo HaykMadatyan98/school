@@ -434,8 +434,9 @@ async function main() {
   await prisma.menuItem.deleteMany();
   await prisma.page.deleteMany();
 
-  const email = 'admin@school.local';
-  const passwordHash = await bcrypt.hash('admin123', 10);
+  const email = process.env.ADMIN_EMAIL?.trim() || 'admin@school.local';
+  const password = process.env.ADMIN_PASSWORD?.trim() || 'admin123';
+  const passwordHash = await bcrypt.hash(password, 10);
 
   const admin = await prisma.user.upsert({
     where: { email },
@@ -540,7 +541,7 @@ async function main() {
   await seedMenu(MENU);
 
   console.log(`Seed OK — ${PAGES.length} pages, nested menu, posts`);
-  console.log('Admin login: admin@school.local / admin123');
+  console.log(`Admin user: ${email} (password from ADMIN_PASSWORD or default)`);
 }
 
 main()

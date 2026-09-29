@@ -25,7 +25,7 @@ export class AuthController {
         accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
         user: {
           id: '...',
-          email: 'admin@school.local',
+          email: 'admin@example.com',
           name: 'Administrator',
           role: 'ADMIN',
         },
