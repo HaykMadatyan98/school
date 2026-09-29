@@ -34,6 +34,8 @@
     "resync:wsite": "tsx scripts/resync-wsite-sections.ts",
     "import:fresh-wsite": "tsx scripts/fresh-wsite-import.ts",
     "sync:staff": "tsx scripts/sync-staff-cards.ts",
+    "seed:parent-council": "tsx scripts/seed-parent-council-list.ts",
+    "convert:phase2": "tsx scripts/convert-docs-pages.ts",
     "normalize:staff-bios": "tsx scripts/normalize-staff-bios.ts",
     "add:director": "tsx scripts/add-director.ts",
     "seed:mock": "tsx scripts/seed-mock.ts",

@@ -14,6 +14,7 @@
     "db:up": "docker compose up -d",
     "db:setup": "npm run db:setup -w api",
     "seed": "npm run prisma:seed -w api",
-    "fix:wsite-images": "npm run fix:wsite-images -w api"
+    "fix:wsite-images": "npm run fix:wsite-images -w api",
+    "convert:phase2": "npm run convert:phase2 -w api"
   }
 }

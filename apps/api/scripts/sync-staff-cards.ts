@@ -1,5 +1,5 @@
 /**
- * Rebuild /p/staff (+ teachers) with structured person cards.
+ * Rebuild /p/staff (+ teachers) with structured :::person cards from CMS wsite HTML.
  * npm run sync:staff -w api
  */
 import { PrismaClient, PostStatus } from '@prisma/client';
@@ -9,8 +9,6 @@ loadEnv();
 
 const prisma = new PrismaClient();
 const BASE = 'http://school78.safe.am';
-const STAFF_PATH =
-  '/133214021408140014091387-1377139913891377140713771391137713821396.html';
 
 const ROLE_HINT =
   /(տեղակալ|հոգեբան|բուժքույր|օգնական|նախագահ|ուսուցիչ|ուսուցչուհի|դաստիարակ|մեթոդ|տնօրեն|քարտուղար|գրադարանավար|հաշվապահ|կազմակերպիչ|լաբորանտ)/i;
@@ -54,18 +52,33 @@ function absUrl(u: string) {
   return `${BASE}${raw.startsWith('/') ? raw : `/${raw}`}`;
 }
 
+function isPhotoUrl(url: string) {
+  return (
+    /lh3\.googleusercontent\.com/i.test(url) ||
+    /drive\.google\.com\/file\/d\//i.test(url) ||
+    /\/uploads\//i.test(url)
+  );
+}
+
 function isJunk(url: string) {
   const u = url.toLowerCase();
-  // Keep camera portraits even if Weebly stored them as *_orig.jpg
-  // (director photo is dsc-3757_orig.jpg with text BEFORE the image).
   const isCameraPortrait = /(?:^|\/)(?:dsc|img|photo|pict)[-_]?\d+/i.test(u);
   return (
     u.includes('background-images/') ||
     u.includes('footer-toast') ||
     u.includes('/download.jpg') ||
-    (u.includes('_orig.') && !isCameraPortrait) ||
+    (u.includes('_orig.') && !isCameraPortrait && !/lh3\.googleusercontent/i.test(u)) ||
     /\/published\/78-1\.jpg$/i.test(u) ||
     /icon|logo|button|spacer|facebook|twitter|weebly|toast/i.test(u)
+  );
+}
+
+function stripWsiteInner(content: string) {
+  if (!content.includes(':::wsite-html')) return content;
+  return (
+    content
+      .match(/:::wsite-html\s*\n([\s\S]*?)\n:::/)?.[1]
+      ?.trim() || content
   );
 }
 
@@ -180,7 +193,7 @@ function extractPeople(html: string): Person[] {
     const srcM = m[1].match(/src=["']([^"']+)/i);
     if (!srcM) continue;
     const photo = absUrl(srcM[1]);
-    if (!photo.includes('/uploads/') || isJunk(photo)) continue;
+    if (!isPhotoUrl(photo) || isJunk(photo)) continue;
     if (seenPhoto.has(photo)) continue;
 
     // Prefer nearby name in <strong>/<font>; role often in <em>
@@ -327,12 +340,12 @@ function toMarkdown(title: string, intro: string, people: Person[]) {
 }
 
 async function main() {
-  const res = await fetch(`${BASE}${STAFF_PATH}`, {
-    headers: { 'User-Agent': 'School78StaffSync/1.1' },
-    signal: AbortSignal.timeout(60000),
+  const staffPage = await prisma.page.findUnique({
+    where: { slug: 'staff' },
+    select: { content: true },
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const html = await res.text();
+  if (!staffPage?.content?.am) throw new Error('staff page missing');
+  const html = stripWsiteInner(staffPage.content.am);
   const people = extractPeople(html);
   if (people.length < 5) throw new Error(`Too few people: ${people.length}`);
 
